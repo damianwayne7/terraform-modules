@@ -6,18 +6,27 @@ variable "environment" {
   type = string
 }
 
-# REQUIRED: function name and source path (caller must provide)
+# FUNCTION NAME (required)
 variable "lambda_function_name" {
   type        = string
-  description = "Name used for the lambda (no spaces). Caller must provide."
+  description = "Logical name of the lambda function"
 }
 
+# --- 2 ways to provide code ----
+# A) Prebuilt ZIP (recommended)
+variable "zip_file_path" {
+  type        = string
+  description = "Path to an existing Lambda deployment ZIP"
+  default     = ""
+}
+
+# B) Source directory (optional, fallback)
 variable "lambda_source_path" {
   type        = string
-  description = "Path (absolute or caller-relative) to the lambda source directory. Must exist on the runner."
+  description = "Path to folder containing lambda source code. Ignored if zip_file_path is set."
+  default     = ""
 }
 
-# Optional settings
 variable "handler" {
   type    = string
   default = "hello.handler"
@@ -41,11 +50,6 @@ variable "timeout" {
 variable "publish_version" {
   type    = bool
   default = false
-}
-
-variable "description" {
-  type    = string
-  default = ""
 }
 
 variable "log_retention_days" {
