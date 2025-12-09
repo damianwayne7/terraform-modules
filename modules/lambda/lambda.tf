@@ -3,6 +3,9 @@ locals {
   lambda_name      = "${local.name_prefix}-lambda-${var.lambda_function_name}"
   lambda_role_name = "${local.name_prefix}-lambda-${var.lambda_function_name}-role"
   log_group_name   = "/aws/lambda/${local.lambda_name}"
+
+  # choose provided zip or module build path
+  final_zip_path = var.zip_file_path != "" ? var.zip_file_path : "${path.module}/build/${var.lambda_function_name}.zip"
 }
 
 # -------------------------------
@@ -36,20 +39,19 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_exec" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_extra_policies" {
+  count      = var.use_existing_role ? 0 : length(var.additional_managed_policy_arns)
+  role       = aws_iam_role.lambda_role[0].name
+  policy_arn = var.additional_managed_policy_arns[count.index]
+}
+
 locals {
   lambda_role_arn = var.use_existing_role ? var.existing_role_arn : aws_iam_role.lambda_role[0].arn
 }
 
 # -------------------------------
-# Source ZIP selection logic
+# Build the zip only if not provided
 # -------------------------------
-locals {
-  final_zip_path = var.zip_file_path != "" ?
-    var.zip_file_path :
-    "${path.module}/build/${var.lambda_function_name}.zip"
-}
-
-# Only build zip if ZIP not provided
 resource "null_resource" "ensure_build_dir" {
   count = var.zip_file_path == "" ? 1 : 0
   provisioner "local-exec" {
@@ -70,6 +72,12 @@ data "archive_file" "lambda_zip" {
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = local.log_group_name
   retention_in_days = var.log_retention_days
+
+  tags = {
+    Name        = local.log_group_name
+    Project     = var.project_name
+    Environment = var.environment
+  }
 }
 
 # -------------------------------
@@ -83,12 +91,9 @@ resource "aws_lambda_function" "lambda" {
   timeout       = var.timeout
   memory_size   = var.memory_size
   publish       = var.publish_version
+  filename      = local.final_zip_path
 
-  filename = local.final_zip_path
-
-  source_code_hash = var.zip_file_path != "" ?
-    filebase64sha256(var.zip_file_path) :
-    data.archive_file.lambda_zip[0].output_base64sha256
+  source_code_hash = var.zip_file_path != "" ? filebase64sha256(var.zip_file_path) : data.archive_file.lambda_zip[0].output_base64sha256
 
   environment {
     variables = var.environment_variables
@@ -108,5 +113,9 @@ resource "aws_lambda_function" "lambda" {
     Name        = local.lambda_name
     Project     = var.project_name
     Environment = var.environment
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
