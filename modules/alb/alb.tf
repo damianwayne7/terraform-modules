@@ -166,7 +166,7 @@ resource "aws_s3_bucket" "verdethos_alb_logs_bucket" {
 
 data "aws_caller_identity" "current" {}
 resource "aws_lb" "verdethos_alb_update_access_logs" {
-  # dummy resource used to attach access_logs config using lifecycle ignore changes pattern
+  subnets            = var.public_subnets
   count             = 0
   # not used; real access_log configuration is set via aws_lb resource's access_logs block
 }
