@@ -1,8 +1,8 @@
 locals {
-  name_prefix    = "${var.project_name}-${var.environment}"
-  lambda_name    = "${local.name_prefix}-lambda-${var.function_name}"
-  lambda_role_name = "${local.name_prefix}-lambda-${var.function_name}-role"
-  log_group_name = "/aws/lambda/${local.lambda_name}"
+  name_prefix      = "${var.project_name}-${var.environment}"
+  lambda_name      = "${local.name_prefix}-lambda-${var.lambda_function_name}"
+  lambda_role_name = "${local.name_prefix}-lambda-${var.lambda_function_name}-role"
+  log_group_name   = "/aws/lambda/${local.lambda_name}"
 }
 
 # ------------------------------------------------
@@ -48,17 +48,19 @@ locals {
   lambda_role_arn = var.use_existing_role ? var.existing_role_arn : aws_iam_role.verdethos_lambda_role[0].arn
 }
 
+# ensure build folder exists
 resource "null_resource" "ensure_build_dir" {
   provisioner "local-exec" {
     command = "mkdir -p ${path.module}/build"
   }
 }
+
 # ------------------------------------------------
 # Package Lambda source (zip)
 # ------------------------------------------------
 data "archive_file" "verdethos_lambda_zip" {
-  type        = "zip"
-  source_dir  = var.source_path
+  type       = "zip"
+  source_dir = var.lambda_source_path
   output_path = "${path.module}/build/${var.lambda_function_name}.zip"
 }
 
@@ -80,21 +82,23 @@ resource "aws_cloudwatch_log_group" "verdethos_lambda_log_group" {
 # Lambda function
 # ------------------------------------------------
 resource "aws_lambda_function" "verdethos_lambda_function" {
-  function_name = local.lambda_name
-  filename      = data.archive_file.verdethos_lambda_zip.output_path
+  function_name    = local.lambda_name
+  filename         = data.archive_file.verdethos_lambda_zip.output_path
   source_code_hash = data.archive_file.verdethos_lambda_zip.output_base64sha256
-  handler       = var.handler
-  runtime       = var.runtime
-  role          = local.lambda_role_arn
-  publish       = var.publish_version
-  memory_size   = var.memory_size
-  timeout       = var.timeout
-  description   = var.description
+  handler          = var.handler
+  runtime          = var.runtime
+  role             = local.lambda_role_arn
+  publish          = var.publish_version
+  memory_size      = var.memory_size
+  timeout          = var.timeout
+  description      = var.description
 
-  # Optional: VPC configuration (for DB access)
-  vpc_config {
-    subnet_ids         = var.vpc_subnet_ids
-    security_group_ids = var.vpc_security_group_ids
+  dynamic "vpc_config" {
+    for_each = length(var.vpc_subnet_ids) > 0 ? [1] : []
+    content {
+      subnet_ids         = var.vpc_subnet_ids
+      security_group_ids = var.vpc_security_group_ids
+    }
   }
 
   environment {
@@ -113,4 +117,3 @@ resource "aws_lambda_function" "verdethos_lambda_function" {
     create_before_destroy = true
   }
 }
-
