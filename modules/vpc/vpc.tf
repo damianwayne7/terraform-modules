@@ -111,13 +111,13 @@ resource "aws_route_table" "private_rt" {
 }
 
 resource "aws_route" "private_default_route" {
-  for_each = { for idx, subnet in aws_subnet.private : idx => subnet }
+  for_each = var.create_nat ? { for idx, subnet in aws_subnet.private : idx => subnet } : {}
 
   route_table_id         = aws_route_table.private_rt.id
   destination_cidr_block = "0.0.0.0/0"
-
-  gateway_id = length(aws_nat_gateway.nat) > 0 ? aws_nat_gateway.nat[each.key].id : null
+  nat_gateway_id         = aws_nat_gateway.nat[each.key].id
 }
+
 
 resource "aws_route_table_association" "private_assoc" {
   for_each = { for idx, subnet in aws_subnet.private : idx => subnet }
