@@ -8,16 +8,16 @@ variable "environment" {
   type        = string
 }
 
-variable "function_name" {
-  description = "Short logical function name (no spaces). Final name: verdethos-<env>-lambda-<function_name>"
+variable "lambda_function_name" {
   type        = string
+  description = "Lambda function name"
 }
 
-variable "source_path" {
-  description = "Local directory containing the Lambda source (packaged as zip by Terraform)"
+variable "lambda_source_path" {
   type        = string
-  default     = "./lambda_src"
+  description = "Absolute or caller-relative path to lambda source directory (containing code). Must exist on the runner."
 }
+
 
 variable "runtime" {
   description = "Lambda runtime"
