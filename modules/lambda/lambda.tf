@@ -48,13 +48,18 @@ locals {
   lambda_role_arn = var.use_existing_role ? var.existing_role_arn : aws_iam_role.verdethos_lambda_role[0].arn
 }
 
+resource "null_resource" "ensure_build_dir" {
+  provisioner "local-exec" {
+    command = "mkdir -p ${path.module}/build"
+  }
+}
 # ------------------------------------------------
 # Package Lambda source (zip)
 # ------------------------------------------------
 data "archive_file" "verdethos_lambda_zip" {
   type        = "zip"
   source_dir  = var.source_path
-  output_path = "${path.module}/${var.function_name}.zip"
+  output_path = "${path.module}/build/${var.lambda_function_name}.zip"
 }
 
 # ------------------------------------------------
