@@ -11,10 +11,11 @@ locals {
   node_group_name = "${local.prefix}-eks-node-group"
 }
 
-#################################################
+##############################################
 # IAM ROLE FOR EKS CONTROL PLANE
-#################################################
-data "aws_iam_policy_document" "verdethos_eks_cluster_assume" {
+##############################################
+
+data "aws_iam_policy_document" "eks_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
@@ -24,9 +25,9 @@ data "aws_iam_policy_document" "verdethos_eks_cluster_assume" {
   }
 }
 
-resource "aws_iam_role" "verdethos_eks_cluster_role" {
+resource "aws_iam_role" "eks_cluster_role" {
   name               = local.cluster_role_name
-  assume_role_policy = data.aws_iam_policy_document.verdethos_eks_cluster_assume.json
+  assume_role_policy = data.aws_iam_policy_document.eks_assume_role.json
 
   tags = {
     Name        = local.cluster_role_name
@@ -35,22 +36,23 @@ resource "aws_iam_role" "verdethos_eks_cluster_role" {
   }
 }
 
-resource "aws_iam_role_policy_attachment" "verdethos_eks_cluster_policy" {
-  role       = aws_iam_role.verdethos_eks_cluster_role.name
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  role       = aws_iam_role.eks_cluster_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-resource "aws_iam_role_policy_attachment" "verdethos_eks_service_policy" {
-  role       = aws_iam_role.verdethos_eks_cluster_role.name
+resource "aws_iam_role_policy_attachment" "eks_service_policy" {
+  role       = aws_iam_role.eks_cluster_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
 }
 
-#################################################
+##############################################
 # EKS CLUSTER
-#################################################
-resource "aws_eks_cluster" "verdethos_eks_cluster" {
+##############################################
+
+resource "aws_eks_cluster" "eks_cluster" {
   name     = local.cluster_name
-  role_arn = aws_iam_role.verdethos_eks_cluster_role.arn
+  role_arn = aws_iam_role.eks_cluster_role.arn
   version  = var.k8s_version
 
   vpc_config {
@@ -67,28 +69,32 @@ resource "aws_eks_cluster" "verdethos_eks_cluster" {
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.verdethos_eks_cluster_policy,
-    aws_iam_role_policy_attachment.verdethos_eks_service_policy
+    aws_iam_role_policy_attachment.eks_cluster_policy,
+    aws_iam_role_policy_attachment.eks_service_policy
   ]
 }
 
-#################################################
-# IAM OIDC PROVIDER FOR IRSA
-#################################################
-data "tls_certificate" "verdethos_eks_oidc_thumbprint" {
-  url = aws_eks_cluster.verdethos_eks_cluster.identity[0].oidc[0].issuer
+
+##############################################
+# OIDC PROVIDER FOR IRSA
+##############################################
+
+data "tls_certificate" "eks_oidc_thumbprint" {
+  url = aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer
 }
 
-resource "aws_iam_openid_connect_provider" "verdethos_eks_oidc" {
-  url             = aws_eks_cluster.verdethos_eks_cluster.identity[0].oidc[0].issuer
+resource "aws_iam_openid_connect_provider" "eks_oidc" {
+  url             = aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer
   client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = [data.tls_certificate.verdethos_eks_oidc_thumbprint.certificates[0].sha1_fingerprint]
+  thumbprint_list = [data.tls_certificate.eks_oidc_thumbprint.certificates[0].sha1_fingerprint]
 }
 
-#################################################
-# NODE ROLE
-#################################################
-data "aws_iam_policy_document" "verdethos_eks_node_assume" {
+
+##############################################
+# EKS NODE ROLE
+##############################################
+
+data "aws_iam_policy_document" "eks_node_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
@@ -98,9 +104,9 @@ data "aws_iam_policy_document" "verdethos_eks_node_assume" {
   }
 }
 
-resource "aws_iam_role" "verdethos_eks_node_role" {
+resource "aws_iam_role" "eks_node_role" {
   name               = local.node_role_name
-  assume_role_policy = data.aws_iam_policy_document.verdethos_eks_node_assume.json
+  assume_role_policy = data.aws_iam_policy_document.eks_node_assume_role.json
 
   tags = {
     Name        = local.node_role_name
@@ -109,28 +115,32 @@ resource "aws_iam_role" "verdethos_eks_node_role" {
   }
 }
 
-resource "aws_iam_role_policy_attachment" "verdethos_eks_node_worker" {
-  role       = aws_iam_role.verdethos_eks_node_role.name
+resource "aws_iam_role_policy_attachment" "eks_node_worker_policy" {
+  role       = aws_iam_role.eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 
-resource "aws_iam_role_policy_attachment" "verdethos_eks_node_cni" {
-  role       = aws_iam_role.verdethos_eks_node_role.name
+resource "aws_iam_role_policy_attachment" "eks_node_cni_policy" {
+  role       = aws_iam_role.eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
 
-resource "aws_iam_role_policy_attachment" "verdethos_eks_node_ecr" {
-  role       = aws_iam_role.verdethos_eks_node_role.name
+resource "aws_iam_role_policy_attachment" "eks_node_ecr_policy" {
+  role       = aws_iam_role.eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-#################################################
-# MANAGED NODE GROUP
-#################################################
-resource "aws_eks_node_group" "verdethos_eks_node_group" {
-  cluster_name    = aws_eks_cluster.verdethos_eks_cluster.name
+
+##############################################
+# MANAGED NODE GROUP (Optional)
+##############################################
+
+resource "aws_eks_node_group" "eks_node_group" {
+  count = var.create_node_group ? 1 : 0
+
+  cluster_name    = aws_eks_cluster.eks_cluster.name
   node_group_name = local.node_group_name
-  node_role_arn   = aws_iam_role.verdethos_eks_node_role.arn
+  node_role_arn   = aws_iam_role.eks_node_role.arn
   subnet_ids      = var.private_subnets
 
   scaling_config {
