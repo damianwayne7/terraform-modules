@@ -152,3 +152,10 @@ variable "access_logs_bucket_name" {
   type        = string
   default     = ""
 }
+
+variable "node_security_group_ids" {
+  type        = list(string)
+  description = "Security group IDs of EKS worker nodes to allow ALB → Pod traffic"
+  default     = []
+}
+
