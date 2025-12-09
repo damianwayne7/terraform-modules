@@ -58,9 +58,7 @@ resource "aws_apigatewayv2_route" "verdethos_api_route" {
   api_id    = aws_apigatewayv2_api.verdethos_api.id
   route_key = var.route_key
 
-  target = var.enable_jwt_authorizer
-      ? "integrations/${aws_apigatewayv2_integration.verdethos_api_integration.id}"
-      : "integrations/${aws_apigatewayv2_integration.verdethos_api_integration.id}"
+  target = "integrations/${aws_apigatewayv2_integration.verdethos_api_integration.id}"
 
   # Authorizer if enabled
   authorizer_id = var.enable_jwt_authorizer ? aws_apigatewayv2_authorizer.verdethos_jwt_authorizer[0].id : null
