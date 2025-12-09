@@ -42,12 +42,6 @@ variable "listener_port" {
   default     = 80
 }
 
-variable "listener_protocol" {
-  description = "Primary listener protocol"
-  type        = string
-  default     = "HTTP"
-}
-
 variable "target_protocol" {
   description = "Target group protocol (HTTP/HTTPS)"
   type        = string
