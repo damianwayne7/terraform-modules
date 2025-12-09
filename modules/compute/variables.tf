@@ -1,9 +1,31 @@
-variable "project_name"     { type = string }
-variable "environment"      { type = string }
+#############################################
+# Required Inputs
+#############################################
 
-variable "vpc_id"           { type = string }
-variable "private_subnets"  { type = list(string) }
-variable "public_subnets"   { type = list(string) }
+variable "project_name" {
+  type = string
+}
+
+variable "environment" {
+  type = string
+}
+
+variable "vpc_id" {
+  type = string
+}
+
+variable "private_subnets" {
+  type = list(string)
+}
+
+variable "public_subnets" {
+  type = list(string)
+}
+
+
+#############################################
+# EKS Cluster Configuration
+#############################################
 
 variable "k8s_version" {
   type    = string
@@ -23,6 +45,17 @@ variable "endpoint_public_access" {
 variable "public_access_cidrs" {
   type    = list(string)
   default = ["0.0.0.0/0"]
+}
+
+
+#############################################
+# Node Group Configuration
+#############################################
+
+variable "create_node_group" {
+  type        = bool
+  description = "Whether to create EKS managed node group"
+  default     = true
 }
 
 variable "instance_types" {
