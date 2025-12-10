@@ -5,7 +5,7 @@ locals {
   log_group_name   = "/aws/lambda/${local.lambda_name}"
 
   # choose provided zip or module build path
-  final_zip_path = var.zip_file_path != "" ? var.zip_file_path : "${path.module}/build/${var.lambda_function_name}.zip"
+  final_zip_path = var.zip_file_path
 }
 
 # -------------------------------
